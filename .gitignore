@@ -1,0 +1,3 @@
+.venv/
+airflow_home/logs/
+include/__pycache__/transformations.cpython-310.pyc

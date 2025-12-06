@@ -69,6 +69,50 @@ def _run_dbt_command(command: str, ds_nodash: str) -> subprocess.CompletedProces
 #  (bronze, silver, gold) usando las funciones de transformación y
 #  los comandos de dbt.
 
+def bronze_clean(ds_nodash: str) -> None:
+    raw_file = RAW_DIR / f"transactions_{ds_nodash}.csv"
+    output_file = CLEAN_DIR / f"transactions_{ds_nodash}_clean.parquet"
+
+    CLEAN_DIR.mkdir(parents=True, exist_ok=True)
+
+    if not raw_file.exists():
+        raise AirflowException(f"Raw file not found: {raw_file}")
+
+    clean_daily_transactions(
+        input_path=raw_file,
+        output_path=output_file,
+    )
+
+def silver_dbt_run(ds_nodash: str) -> None:
+    result = _run_dbt_command("run", ds_nodash)
+
+    if result.returncode != 0:
+        raise AirflowException(
+            f"dbt run failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        )
+
+def gold_dbt_tests(ds_nodash: str) -> None:
+    QUALITY_DIR.mkdir(parents=True, exist_ok=True)
+
+    result = _run_dbt_command("test", ds_nodash)
+
+    status = "passed" if result.returncode == 0 else "failed"
+
+    results_file = QUALITY_DIR / f"dq_results_{ds_nodash}.json"
+    with open(results_file, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "date": ds_nodash,
+                "status": status,
+            },
+            f,
+            indent=2,
+        )
+
+    if result.returncode != 0:
+        raise AirflowException("dbt tests failed (see dq_results file)")
+
+
 
 def build_dag() -> DAG:
     """Construct the medallion pipeline DAG with bronze/silver/gold tasks."""
@@ -80,6 +124,26 @@ def build_dag() -> DAG:
         catchup=True,
         max_active_runs=1,
     ) as medallion_dag:
+    
+        bronze_task = PythonOperator(
+            task_id="bronze_clean",
+            python_callable=bronze_clean,
+            op_kwargs={"ds_nodash": "{{ ds_nodash }}"},
+        )
+
+        silver_task = PythonOperator(
+            task_id="silver_dbt_run",
+            python_callable=silver_dbt_run,
+            op_kwargs={"ds_nodash": "{{ ds_nodash }}"},
+        )
+
+        gold_task = PythonOperator(
+            task_id="gold_dbt_tests",
+            python_callable=gold_dbt_tests,
+            op_kwargs={"ds_nodash": "{{ ds_nodash }}"},
+        )
+
+        bronze_task >> silver_task >> gold_task
 
 
         # TODO:
