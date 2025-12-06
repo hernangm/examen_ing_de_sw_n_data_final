@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pendulum
 from airflow import DAG
-from airflow.exceptions import AirflowException
+from airflow.exceptions import AirflowException, AirflowSkipException
 from airflow.operators.python import PythonOperator
 
 # pylint: disable=import-error,wrong-import-position
@@ -78,7 +78,7 @@ def bronze_clean(ds_nodash: str, ti: "TaskInstance") -> None:
         )
     except FileNotFoundError:
         logging.warning("Raw data not found for %s, skipping.", execution_date)
-        ti.skip_all_downstream()
+        raise AirflowSkipException(f"Raw data not found for {execution_date}, skipping.")
 
 
 def silver_dbt_run(ds_nodash: str) -> None:
