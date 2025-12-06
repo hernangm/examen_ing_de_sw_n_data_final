@@ -78,8 +78,8 @@ def bronze_clean(ds_nodash: str) -> None:
             raw_dir=RAW_DIR,
             clean_dir=CLEAN_DIR,
         )
-    except FileNotFoundError as e:
-        raise AirflowException(f"Raw data not found for {ds_nodash}") from e
+    except FileNotFoundError:
+        print(f"Raw data not found for {ds_nodash}, skipping.")
 
 def silver_dbt_run(ds_nodash: str) -> None:
     result = _run_dbt_command("run", ds_nodash)
