@@ -72,14 +72,11 @@ def _run_dbt_command(command: str, ds_nodash: str) -> subprocess.CompletedProces
 def bronze_clean(ds_nodash: str) -> None:
     """Clean raw data for the given execution date."""
     execution_date = datetime.strptime(ds_nodash, "%Y%m%d").date()
-    try:
-        clean_daily_transactions(
-            execution_date=execution_date,
-            raw_dir=RAW_DIR,
-            clean_dir=CLEAN_DIR,
-        )
-    except FileNotFoundError:
-        print(f"Raw data not found for {ds_nodash}, skipping.")
+    clean_daily_transactions(
+        execution_date=execution_date,
+        raw_dir=RAW_DIR,
+        clean_dir=CLEAN_DIR,
+    )
 
 def silver_dbt_run(ds_nodash: str) -> None:
     result = _run_dbt_command("run", ds_nodash)
