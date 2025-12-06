@@ -27,6 +27,8 @@ models:
                 - completed
                 - pending
                 - failed
+          - is_valid_status_transition:
+              amount_column: amount
       - name: transaction_ts
         description: "Event timestamp of the transaction."
         tests:

@@ -1,5 +1,7 @@
 # Medallion Architecture Demo (Airflow + dbt + DuckDB)
 
+> **Nota:** La documentación detallada del proyecto, la configuración del entorno con Docker y las respuestas a las inquietudes planteadas se encuentran en el archivo [`DOCUMENTATION.md`](./DOCUMENTATION.md).
+
 Este proyecto crea un pipeline de 3 pasos que replica la arquitectura medallion:
 
 1. **Bronze**: Airflow lee un CSV crudo según la fecha de ejecución y aplica una limpieza básica con Pandas guardando un archivo parquet limpio.
