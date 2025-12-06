@@ -178,6 +178,7 @@ El archivo `package.json` incluye una serie de scripts para facilitar la interac
 - `npm run docker:build`: Construye o reconstruye las imágenes de los servicios.
 - `npm run docker:rebuild`: Reconstruye las imágenes sin usar la caché de Docker.
 - `npm run docker:logs`: Muestra los logs de todos los servicios en tiempo real.
+- `npm run docker:logs:airflow`: Muestra los logs del servicio `airflow`.
 - `npm run docker:ps`: Lista los contenedores en ejecución.
 - `npm run docker:clean`: Detiene y elimina los contenedores y los volúmenes asociados para una limpieza completa.
 - `npm run docker:exec`: Inicia una sesión de `bash` dentro del contenedor de Airflow para ejecución de comandos manuales.
@@ -187,12 +188,6 @@ El archivo `package.json` incluye una serie de scripts para facilitar la interac
 - `npm run airflow:trigger`: Dispara la ejecución del DAG `medallion_pipeline`.
 - `npm run airflow:list-dags`: Lista todos los DAGs disponibles en Airflow.
 - `npm run airflow:ui`: Abre la interfaz de usuario de Airflow en el navegador web.
-
-### Interacción con dbt
-
-- `npm run dbt:run`: Ejecuta `dbt run` para materializar los modelos.
-- `npm run dbt:test`: Ejecuta `dbt test` para correr las pruebas de calidad de datos.
-- `npm run dbt:debug`: Ejecuta `dbt debug` para validar la configuración del proyecto dbt.
 
 ### Calidad de Código y Herramientas
 

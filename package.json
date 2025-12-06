@@ -9,29 +9,16 @@
     "docker:build": "docker-compose build",
     "docker:rebuild": "docker-compose build --no-cache",
     "docker:logs": "docker-compose logs -f",
-    "docker:logs:webserver": "docker-compose logs -f airflow",
-    "docker:logs:scheduler": "docker-compose logs -f airflow-scheduler",
+    "docker:logs:airflow": "docker-compose logs -f airflow",
     "docker:ps": "docker-compose ps",
     "docker:clean": "docker-compose down -v",
     "docker:exec": "docker-compose exec airflow bash",
     "airflow:trigger": "docker-compose exec airflow airflow dags trigger medallion_pipeline",
     "airflow:list-dags": "docker-compose exec airflow airflow dags list",
     "airflow:ui": "echo Opening Airflow UI at http://localhost:8080 && start http://localhost:8080",
-    "dbt:run": "docker-compose exec -e CLEAN_DIR=/opt/airflow/data/clean -e DS_NODASH=$npm_config_date airflow bash -c \"cd dbt && dbt run\"",
-    "dbt:test": "docker-compose exec -e CLEAN_DIR=/opt/airflow/data/clean -e DS_NODASH=$npm_config_date airflow bash -c \"cd dbt && dbt test\"",
-    "dbt:debug": "docker-compose exec -e CLEAN_DIR=/opt/airflow/data/clean -e DS_NODASH=$npm_config_date airflow bash -c \"cd dbt && dbt debug\"",
     "lint": "pwsh.exe -File lint.ps1",
     "duckdb:cli": "docker-compose exec airflow duckdb /opt/airflow/warehouse/medallion.duckdb",
     "dev:start": "npm run docker:start && npm run docker:logs",
     "dev:fresh": "npm run docker:clean && npm run docker:build && npm run docker:start"
-  },
-  "keywords": [
-    "airflow",
-    "dbt",
-    "duckdb",
-    "medallion",
-    "data-engineering"
-  ],
-  "author": "",
-  "license": "ISC"
+  }
 }
