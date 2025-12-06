@@ -70,18 +70,16 @@ def _run_dbt_command(command: str, ds_nodash: str) -> subprocess.CompletedProces
 #  los comandos de dbt.
 
 def bronze_clean(ds_nodash: str) -> None:
-    raw_file = RAW_DIR / f"transactions_{ds_nodash}.csv"
-    output_file = CLEAN_DIR / f"transactions_{ds_nodash}_clean.parquet"
-
-    CLEAN_DIR.mkdir(parents=True, exist_ok=True)
-
-    if not raw_file.exists():
-        raise AirflowException(f"Raw file not found: {raw_file}")
-
-    clean_daily_transactions(
-        input_path=raw_file,
-        output_path=output_file,
-    )
+    """Clean raw data for the given execution date."""
+    execution_date = datetime.strptime(ds_nodash, "%Y%m%d").date()
+    try:
+        clean_daily_transactions(
+            execution_date=execution_date,
+            raw_dir=RAW_DIR,
+            clean_dir=CLEAN_DIR,
+        )
+    except FileNotFoundError as e:
+        raise AirflowException(f"Raw data not found for {ds_nodash}") from e
 
 def silver_dbt_run(ds_nodash: str) -> None:
     result = _run_dbt_command("run", ds_nodash)
