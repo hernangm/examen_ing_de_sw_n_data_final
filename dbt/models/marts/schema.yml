@@ -27,6 +27,7 @@ models:
         tests:
           - not_null
           - non_negative
-          - amount_consistency:
-              column_greater: total_amount_all
-              column_less: total_amount_completed
+    tests:
+      - amount_consistency:
+          column_greater: total_amount_all
+          column_less: total_amount_completed
