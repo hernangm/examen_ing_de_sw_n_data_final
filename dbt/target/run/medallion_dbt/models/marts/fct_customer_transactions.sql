@@ -1,6 +1,14 @@
 
-with base as (
-    select * from {{ ref('stg_transactions') }}
+  
+    
+    
+
+    create  table
+      "medallion"."main"."fct_customer_transactions__dbt_tmp"
+  
+    as (
+      with base as (
+    select * from "medallion"."main"."stg_transactions"
 )
 
 , aggregates as (
@@ -19,3 +27,6 @@ select
     total_amount_completed,
     total_amount_all
 from aggregates
+    );
+  
+  
