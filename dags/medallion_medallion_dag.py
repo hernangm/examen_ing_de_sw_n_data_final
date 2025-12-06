@@ -66,7 +66,7 @@ def _run_dbt_command(command: str, ds_nodash: str) -> subprocess.CompletedProces
     )
 
 
-def bronze_clean(ds_nodash: str, ti: "TaskInstance") -> None:
+def bronze_clean(ds_nodash: str) -> None:
     """Clean raw data for the given execution date."""
     execution_date = datetime.strptime(ds_nodash, "%Y%m%d").date()
 
