@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -69,9 +70,16 @@ def _run_dbt_command(command: str, ds_nodash: str) -> subprocess.CompletedProces
 #  (bronze, silver, gold) usando las funciones de transformación y
 #  los comandos de dbt.
 
-def bronze_clean(ds_nodash: str) -> None:
+def bronze_clean(ds_nodash: str, ti: "TaskInstance") -> None:
     """Clean raw data for the given execution date."""
     execution_date = datetime.strptime(ds_nodash, "%Y%m%d").date()
+    
+    raw_file = RAW_DIR / f"transactions_{ds_nodash}.csv"
+    if not raw_file.exists():
+        logging.warning("Raw data not found for %s, skipping.", execution_date)
+        ti.skip_all_downstream()
+        return
+
     clean_daily_transactions(
         execution_date=execution_date,
         raw_dir=RAW_DIR,
@@ -99,9 +107,11 @@ def gold_dbt_tests(ds_nodash: str) -> None:
             {
                 "date": ds_nodash,
                 "status": status,
+                "dbt_output": result.stdout,
+                "dbt_error": result.stderr,
             },
             f,
-            indent=2,
+            indent=4,
         )
 
     if result.returncode != 0:

@@ -1,59 +1,33 @@
-version: '3.8'
-
-x-airflow-common:
-  &airflow-common
-  build: .
+x-airflow-common: &airflow-common
+  image: apache/airflow:3.1.3-python3.10
   environment:
-    &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
-    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: '/opt/airflow/config/passwords.txt'
-    # Project-specific environment variables
-    AIRFLOW_HOME: /opt/airflow
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
     DBT_PROFILES_DIR: /opt/airflow/profiles
     DUCKDB_PATH: /opt/airflow/warehouse/medallion.duckdb
-    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
   volumes:
-    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
-    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
-    - ${AIRFLOW_PROJ_DIR:-.}/dbt:/opt/airflow/dbt
-    - ${AIRFLOW_PROJ_DIR:-.}/include:/opt/airflow/include
-    - ${AIRFLOW_PROJ_DIR:-.}/profiles:/opt/airflow/profiles
-    - ${AIRFLOW_PROJ_DIR:-.}/warehouse:/opt/airflow/warehouse
-    - ${AIRFLOW_PROJ_DIR:-.}/airflow_home/logs:/opt/airflow/logs
-    - ${AIRFLOW_PROJ_DIR:-.}/airflow_home/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJ_DIR:-.}/airflow_home/config:/opt/airflow/config
+    - ./dags:/opt/airflow/dags
+    - ./data:/opt/airflow/data
+    - ./dbt:/opt/airflow/dbt
+    - ./include:/opt/airflow/include
+    - ./profiles:/opt/airflow/profiles
+    - ./warehouse:/opt/airflow/warehouse
+    - ./requirements.txt:/requirements.txt
   user: "${AIRFLOW_UID:-50000}:0"
-  depends_on:
-    &airflow-common-depends-on
-    postgres:
-      condition: service_healthy
 
 services:
-  postgres:
-    image: postgres:13
-    environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
-    volumes:
-      - postgres-db-volume:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "airflow"]
-      interval: 10s
-      retries: 5
-      start_period: 5s
-    restart: always
-
-  airflow-webserver:
+  airflow:
     <<: *airflow-common
-    command: api-server
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        pip install -r /requirements.txt
+        airflow standalone
     ports:
       - "8080:8080"
     healthcheck:
@@ -61,56 +35,4 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
     restart: always
-    depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
-
-  airflow-scheduler:
-    <<: *airflow-common
-    command: scheduler
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: always
-    depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
-
-  airflow-init:
-    <<: *airflow-common
-    entrypoint: /bin/bash
-    command:
-      - -c
-      - |
-        mkdir -p /opt/airflow/logs /opt/airflow/dags /opt/airflow/plugins /opt/airflow/warehouse /opt/airflow/data/raw /opt/airflow/data/clean /opt/airflow/data/quality
-        chown -R "${AIRFLOW_UID:-50000}:0" /opt/airflow/{logs,dags,plugins,warehouse,data}
-        exec /entrypoint airflow version
-    environment:
-      <<: *airflow-common-env
-      _AIRFLOW_DB_MIGRATE: 'true'
-      _AIRFLOW_WWW_USER_CREATE: 'true'
-      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
-      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-admin}
-    user: "0:0"
-
-  airflow-cli:
-    <<: *airflow-common
-    profiles:
-      - debug
-    environment:
-      <<: *airflow-common-env
-      CONNECTION_CHECK_MAX_COUNT: "0"
-    command:
-      - bash
-      - -c
-      - airflow
-
-volumes:
-  postgres-db-volume:

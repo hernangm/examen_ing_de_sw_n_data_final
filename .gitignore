@@ -1,4 +1,61 @@
-.venv/
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+VENV/
+
+## Ignore Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+VENV/
+
+# Ignore sensitive information
+.env
+*.env
+config/passwords.txt
+standalone_admin_password.txt
+
+
+# Ignore log files
+*.log
+logs/
 airflow_home/logs/
-include/__pycache__/transformations.cpython-310.pyc
+dbt/logs/
+
+# Ignore databases
+*.db
+*.sqlite3
+warehouse/
+
+
+
+# Ignore dbt generated files
+dbt/target/
+
+# Ignore data files that are not raw data
+data/clean/
+data/quality/
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Airflow files
 /.claude
