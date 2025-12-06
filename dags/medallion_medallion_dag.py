@@ -70,17 +70,15 @@ def bronze_clean(ds_nodash: str, ti: "TaskInstance") -> None:
     """Clean raw data for the given execution date."""
     execution_date = datetime.strptime(ds_nodash, "%Y%m%d").date()
 
-    raw_file = RAW_DIR / f"transactions_{ds_nodash}.csv"
-    if not raw_file.exists():
+    try:
+        clean_daily_transactions(
+            execution_date=execution_date,
+            raw_dir=RAW_DIR,
+            clean_dir=CLEAN_DIR,
+        )
+    except FileNotFoundError:
         logging.warning("Raw data not found for %s, skipping.", execution_date)
         ti.skip_all_downstream()
-        return
-
-    clean_daily_transactions(
-        execution_date=execution_date,
-        raw_dir=RAW_DIR,
-        clean_dir=CLEAN_DIR,
-    )
 
 
 def silver_dbt_run(ds_nodash: str) -> None:
