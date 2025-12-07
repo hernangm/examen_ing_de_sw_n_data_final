@@ -1,0 +1,24 @@
+{
+  "name": "medallion-architecture-airflow",
+  "version": "1.0.0",
+  "description": "Medallion Architecture Demo with Airflow, dbt, and DuckDB",
+  "scripts": {
+    "docker:start": "docker-compose up -d",
+    "docker:stop": "docker-compose down",
+    "docker:restart": "docker-compose restart",
+    "docker:build": "docker-compose build",
+    "docker:rebuild": "docker-compose build --no-cache",
+    "docker:logs": "docker-compose logs -f",
+    "docker:logs:airflow": "docker-compose logs -f airflow",
+    "docker:ps": "docker-compose ps",
+    "docker:clean": "docker-compose down -v",
+    "docker:exec": "docker-compose exec airflow bash",
+    "airflow:trigger": "docker-compose exec airflow airflow dags trigger medallion_pipeline",
+    "airflow:list-dags": "docker-compose exec airflow airflow dags list",
+    "airflow:ui": "echo Opening Airflow UI at http://localhost:8080 && start http://localhost:8080",
+    "lint": "pwsh.exe -File lint.ps1",
+    "duckdb:cli": "docker-compose exec airflow duckdb /opt/airflow/warehouse/medallion.duckdb",
+    "dev:start": "npm run docker:start && npm run docker:logs",
+    "dev:fresh": "npm run docker:clean && npm run docker:build && npm run docker:start"
+  }
+}

@@ -8,6 +8,10 @@ models:
         description: "Unique id per customer."
         tests:
           - not_null
+          - unique
+          - relationships:
+              to: ref('stg_transactions')
+              field: customer_id
       - name: transaction_count
         description: "Number of transactions per customer."
         tests:
@@ -23,3 +27,7 @@ models:
         tests:
           - not_null
           - non_negative
+    tests:
+      - amount_consistency:
+          column_greater: total_amount_all
+          column_less: total_amount_completed

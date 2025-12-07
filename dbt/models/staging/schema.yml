@@ -35,3 +35,7 @@ models:
         description: "Date component derived from transaction_ts for partitioning/grouping."
         tests:
           - not_null
+    tests:
+      - is_valid_status_transition:
+          status_column: status
+          amount_column: amount

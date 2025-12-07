@@ -1,5 +1,7 @@
 # Medallion Architecture Demo (Airflow + dbt + DuckDB)
 
+> **Nota:** La documentación detallada del proyecto, la configuración del entorno con Docker y las respuestas a las inquietudes planteadas se encuentran en el archivo [`DOCUMENTATION.md`](./DOCUMENTATION.md).
+
 Este proyecto crea un pipeline de 3 pasos que replica la arquitectura medallion:
 
 1. **Bronze**: Airflow lee un CSV crudo según la fecha de ejecución y aplica una limpieza básica con Pandas guardando un archivo parquet limpio.
@@ -8,7 +10,7 @@ Este proyecto crea un pipeline de 3 pasos que replica la arquitectura medallion:
 
 ## Estructura
 
-```
+```text
 ├── dags/
 │   └── medallion_medallion_dag.py
 ├── data/
@@ -62,18 +64,17 @@ airflow standalone
 ```
 
 En el output de `airflow standalone` buscar la contraseña para loguearse. Ej:
-```
+
+```text
 standalone | Airflow is ready
 standalone | Login with username: admin  password: pPr9XXxFzgrgGd6U
 ```
-
 
 ## Ejecutar el DAG
 
 1. Coloca/actualiza el archivo `data/raw/transactions_YYYYMMDD.csv`.
 
-
-3. Desde la UI o CLI dispara el DAG usando la fecha deseada:
+2. Desde la UI o CLI dispara el DAG usando la fecha deseada:
 
 ```bash
 airflow dags trigger medallion_pipeline --run-id manual_$(date +%s)
@@ -118,16 +119,19 @@ Cada corrida crea `data/quality/dq_results_<ds>.json` similar a:
 
 Ese archivo puede ser ingerido por otras herramientas para auditoría o alertas.
 
-
 ## Verificación de resultados por capa
 
 ### Bronze
+
 1. Revisa que exista el parquet más reciente:
+
     ```bash
     $ find data/clean/ | grep transactions_*
     data/clean/transactions_20251201_clean.parquet
     ```
+
 2. Inspecciona las primeras filas para confirmar la limpieza aplicada:
+
     ```bash
     duckdb -c "
       SELECT *
@@ -137,11 +141,15 @@ Ese archivo puede ser ingerido por otras herramientas para auditoría o alertas.
     ```
 
 ### Silver
-1. Abre el warehouse y lista las tablas creadas por dbt:
+
+1. Abre el warehouse y lista las tablas creadas por dbt
+
     ```bash
     duckdb warehouse/medallion.duckdb -c ".tables"
     ```
+
 2. Ejecuta consultas puntuales para validar cálculos intermedios:
+
     ```bash
     duckdb warehouse/medallion.duckdb -c "
       SELECT *
@@ -151,19 +159,21 @@ Ese archivo puede ser ingerido por otras herramientas para auditoría o alertas.
     ```
 
 ### Gold
+
 1. Revisa que exista el parquet más reciente:
+
     ```bash
     $ find data/quality/*.json
     data/quality/dq_results_20251201.json
     ```
 
 2. Confirma la generación del archivo de data quality:
+
     ```bash
     cat data/quality/dq_results_20251201.json | jq
     ```
 
 3. En caso de fallos, inspecciona `stderr` dentro del mismo JSON o revisa los logs del task en la UI/CLI de Airflow para identificar la prueba que reportó error.
-
 
 ## Formato y linting
 
@@ -200,7 +210,9 @@ isort dags include && black dags include && pylint dags/*.py include/*.py
 ```
 
 ## TODOs
+
 Necesarios para completar el workflow:
+
 - [ ] Implementar tareas de Airflow.
 - [ ] Implementar modelos de dbt según cada archivo schema.yml.
 - [ ] Implementar pruebas de dbt para asegurar que las tablas gold estén correctas.
