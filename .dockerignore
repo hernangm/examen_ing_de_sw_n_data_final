@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+
+# Airflow
+airflow_home/logs/
+airflow_home/airflow.db
+airflow_home/airflow.cfg
+airflow_home/webserver_config.py
+airflow_home/unittests.cfg
+
+# Data and warehouse (will be mounted as volumes)
+warehouse/*.duckdb
+warehouse/*.duckdb.wal
+data/clean/*.parquet
+data/quality/*.json
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Documentation
+README.md
+*.md
+
+# Claude
+.claude/

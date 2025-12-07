@@ -1,0 +1,5 @@
+{
+  "npm.enableScriptExplorer": true,
+  "npm.scriptExplorerAction": "run",
+  "npm.autoDetect": "on"
+}
