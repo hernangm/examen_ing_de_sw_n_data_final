@@ -2,6 +2,12 @@
 
 Este documento proporciona toda la información necesaria para configurar, ejecutar y verificar el pipeline de datos de este proyecto.
 
+**Objetivo del Trabajo**
+
+El objetivo de este trabajo es implementar un **pipeline de datos siguiendo el patrón Medallion (Bronze–Silver–Gold)**, orquestado con **Apache Airflow**, utilizando **pandas** para limpieza inicial, **dbt** para transformaciones y tests de calidad, y **DuckDB** como motor analítico liviano.
+
+El pipeline procesa **transacciones diarias**, valida su calidad y genera métricas agregadas a nivel cliente.
+
 ## 1. Requerimientos
 
 El proyecto está completamente dockerizado para simplificar la gestión de dependencias. Los únicos requisitos son:
@@ -55,7 +61,32 @@ standalone | Login with username: admin  password: <tu_contraseña_aqui>
 
 Una vez obtenida, puedes acceder a la UI de Airflow en `http://localhost:8080`.
 
-## 5. Ejecutar el DAG
+## 5. Descripción General del DAG y del Flujo de Datos
+
+El pipeline está orquestado mediante el DAG **`medallion_pipeline`**, cuyo objetivo es procesar archivos diarios de transacciones siguiendo el patrón Medallion.
+
+El punto de partida del flujo es un **archivo Raw** (`transactions_YYYYMMDD.csv`), que representa la llegada de datos desde un sistema fuente externo. Este archivo puede contener distintos tipos de problemas habituales en datos reales, tales como:
+
+* Valores nulos en campos numéricos relevantes.
+* Inconsistencias de formato (mayúsculas, espacios en blanco).
+* Falta de estandarización en valores categóricos.
+
+El DAG está diseñado para **absorber estas imperfecciones sin fallar**, aplicando reglas de limpieza y validación de manera progresiva a lo largo de tres tareas principales:
+
+1. **bronze_clean**
+   Corresponde a la capa Bronze del modelo Medallion. Se encarga de limpiar y estandarizar los datos crudos, eliminando registros inválidos y dejando el dataset en condiciones mínimas de calidad.
+
+2. **silver_dbt_run**
+   Representa la capa Silver. Ejecuta los modelos de dbt que exponen los datos limpios como estructuras analíticas, aplicando casteos y validaciones estructurales.
+
+3. **gold_dbt_tests**
+   Corresponde a la capa Gold. Valida reglas de negocio y de calidad más avanzadas mediante tests de dbt y genera evidencia explícita de dichas validaciones.
+
+La ejecución es estrictamente secuencial, asegurando que cada etapa solo se ejecute si la anterior finalizó correctamente.
+
+---
+
+## 6. Ejecutar el DAG
 
 Puedes disparar el DAG `medallion_pipeline` de dos maneras:
 
@@ -73,7 +104,7 @@ Puedes disparar el DAG `medallion_pipeline` de dos maneras:
 
 > **Nota sobre archivos faltantes**: Si no existe un archivo `transactions_YYYYMMDD.csv` para la fecha de ejecución, el primer task (`bronze_clean`) lo detectará, registrará un `warning` y omitirá la ejecución de los tasks posteriores (`silver` y `gold`) para evitar fallos innecesarios. El DAG finalizará con estado `skipped`.
 
-## 6. Verificación de Resultados por Capa
+## 7. Verificación de Resultados por Capa
 
 Para verificar que cada capa del pipeline ha funcionado correctamente, puedes ejecutar comandos dentro del contenedor.
 
@@ -124,8 +155,7 @@ Para verificar que cada capa del pipeline ha funcionado correctamente, puedes ej
     ```bash
     docker-compose exec airflow-webserver cat /opt/airflow/data/quality/dq_results_*.json | jq
     ```
-
-## 7. Pruebas de Calidad de Datos (dbt Tests)
+## 8. Pruebas de Calidad de Datos (dbt Tests)
 
 El proyecto utiliza una combinación de pruebas de dbt incorporadas y personalizadas para asegurar la calidad y la integridad de los datos a través de las capas.
 
@@ -154,7 +184,121 @@ Estas pruebas genéricas se definen en la carpeta `dbt/tests/generic` para valid
   - **Descripción**: Valida una regla de negocio: una transacción no puede tener el estado `completed` si su monto es cero o negativo.
   - **Uso**: Se aplica a la columna `status` en el modelo de staging para garantizar la consistencia entre el estado y el monto de la transacción.
 
-## 8. Limpieza y Formato de Código
+## 9. Ejemplo de Funcionamiento del DAG `medallion_pipeline`
+
+Este ejemplo muestra cómo el DAG procesa un archivo de transacciones diario a través de las tres etapas del pipeline Medallion: **Bronze, Silver y Gold**.
+
+> **Nota sobre los comandos utilizados en esta sección**  
+> En esta seccion los pasos fueron
+> ejecutados directamente dentro del contenedor de Airflow mediante consola,
+> sin utilizar npm.Los comandos presentados a continuación son funcionalmente equivalentes.
+
+## Etapa 1 – Capa Bronze (bronze_clean)
+
+El DAG parte de un archivo CSV con transacciones diarias. El contenido del archivo de entrada es el siguiente:
+
+```csv
+transaction_id,customer_id,amount,status,transaction_ts
+1,1001,250.50 ,completed,2025-12-05 08:10:00
+2,1002,99.99,Completed,2025-12-05 09:45:00
+3,1003,,failed,2025-12-05 11:00:00
+4,1002,99.99,COMPLETED,2025-12-05 09:45:00
+5,1004,17.40,completed ,2025-12-05 12:30:00
+6,1005,62.10,pending,2025-12-05 13:15:00
+
+Durante la ejecución de la tarea, se aplican reglas explícitas de limpieza:
+
+Los datos limpios se guardan en disco en formato Parquet para su posterior procesamiento.
+
+Dentro del contenedor Docker de Airflow se ejecuta el siguiente comando:
+
+```bash
+find data/clean/ | grep transactions_
+```
+salida obtenida:
+transactions_20251201_clean.parquet
+
+```bash
+import duckdb
+con = duckdb.connect()
+con.execute("""
+    SELECT *
+    FROM read_parquet('data/clean/transactions_20251201_clean.parquet')
+    LIMIT 5
+""").fetchall()
+```
+salida obtenida: 
+
+[(1, 1001, 250.5, 'completed', datetime.datetime(2025, 12, 5, 8, 10), datetime.date(2025, 12, 5)),
+ (2, 1002, 99.99, 'completed', datetime.datetime(2025, 12, 5, 9, 45), datetime.date(2025, 12, 5)),
+ (4, 1002, 99.99, 'completed', datetime.datetime(2025, 12, 5, 9, 45), datetime.date(2025, 12, 5)),
+ (5, 1004, 17.4, 'completed', datetime.datetime(2025, 12, 5, 12, 30), datetime.date(2025, 12, 5)),
+ (6, 1005, 62.1, 'pending', datetime.datetime(2025, 12, 5, 13, 15), datetime.date(2025, 12, 5))]
+
+Se observa por ejemplo, que se elimina la transaccion 3 contener de datos de amount nulos y la transaccion 4 se normaliza el valor status
+
+
+## Etapa 2 – Capa Silver (silver_dbt_run)
+
+En esta etapa, los datos son expuestos mediante el modelo de staging: stg_transactions, implementado con dbt.
+No se eliminan ni modifican registros; la transformación se enfoca en:
+Definir explícitamente los tipos de datos (casteos).
+Estandarizar la estructura del dataset.
+Establecer un contrato de datos para capas posteriores.
+El resultado de la capa Silver se materializa dentro del warehouse DuckDB como un modelo accesible para análisis y agregaciones.
+
+Dentro del contenedor Docker de Airflow se ejecuta el siguiente comando:
+
+```bash
+import duckdb
+con = duckdb.connect("warehouse/medallion.duckdb")
+con.execute("SHOW TABLES;").fetchall()
+```
+salida obtenida: 
+[('stg_transactions',), ('fct_customer_transactions',)]
+
+
+## Etapa 3: Capa Gold (`gold_dbt_tests`)
+
+En esta etapa se busca validar la calidad de los datos y certificar que cumplen con los estándares del negocio.
+como se menciona en el apartado Pruebas de Calidad de Datos (dbt Tests)
+
+
+Donde se genera un reporte de calidad en formato JSON:
+
+```bash
+find data/quality/*.json
+```
+
+salida obtenida:
+dq_results_20251205.json
+
+```bash
+cat data/quality/dq_results_20251201.json
+```
+
+```json
+{
+    "date": "20251205",
+    "status": "passed",
+    "dbt_output": "...",
+    "dbt_error": "..."
+}
+```
+El contenido del archivo indica que todos los tests fueron ejecutados exitosamente:
+
+- status: passed
+- Total de tests ejecutados: 20
+- Errores: 0
+- Warnings: 0
+
+Las pruebas cubren tanto validaciones estructurales (not_null, unique,
+accepted_values) como reglas de negocio personalizadas y controles de
+consistencia entre métricas agregadas. Este archivo constituye evidencia
+reproducible del estado de calidad del pipeline.
+
+
+## 9. Limpieza y Formato de Código
 
 Se utilizan las herramientas `black`, `isort` y `pylint` para garantizar un código limpio y consistente. Se ha añadido un script `lint.ps1` que ejecuta estas herramientas.
 
@@ -166,7 +310,8 @@ npm run lint
 
 Este comando ejecutará las tres herramientas en los directorios `dags/` e `include/`, mostrando los resultados en la consola.
 
-## 9. Comandos npm Disponibles
+
+## 10. Comandos npm Disponibles
 
 El archivo `package.json` incluye una serie de scripts para facilitar la interacción con el entorno Docker.
 
@@ -199,7 +344,7 @@ El archivo `package.json` incluye una serie de scripts para facilitar la interac
 - `npm run dev:start`: Inicia los contenedores y muestra los logs en tiempo real.
 - `npm run dev:fresh`: Realiza una limpieza completa del entorno, reconstruye las imágenes y arranca los servicios.
 
-## 10. Posibles Mejoras
+## 11. Posibles Mejoras
 
 A continuación se presenta un resumen de posibles mejoras para evolucionar este pipeline hacia un entorno de producción.
 
