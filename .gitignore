@@ -64,3 +64,4 @@ data/quality/
 __pycache__/
 *.py[cod]
 *$py.class
+airflow_home/*.pid
